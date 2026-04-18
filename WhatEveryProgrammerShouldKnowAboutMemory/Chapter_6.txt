@@ -1,0 +1,115 @@
+Cache & Memory Optimization — 1 Page Cheat Sheet
+🚀 Core Goal
+
+Keep data in L1 cache. Avoid RAM at all costs.
+
+L1 hit: ~3–5 cycles
+RAM: ~200–300+ cycles
+👉 Performance = memory access pattern, not just algorithm
+🔑 1. Locality (MOST IMPORTANT)
+Spatial Locality
+Access memory sequentially
+for (int i = 0; i < n; i++) arr[i]; // ✅ good
+for (int i = 0; i < n; i++) arr[i * 1024]; // ❌ bad
+Temporal Locality
+Reuse data before eviction
+Keep working set small (fits in cache)
+🔲 2. Loop Blocking (Tiling)
+Idea:
+Work on small chunks that fit in cache
+for (i += B)
+  for (j += B)
+    for (k += B)
+
+✅ Huge speedups (often 2–5x+)
+👉 Critical for matrices, large arrays
+
+🔁 3. Avoid Random Access
+Pattern	Speed
+Sequential	FAST
+Random	SLOW
+
+👉 RAM hates randomness (row switching, no prefetch)
+
+📦 4. Data Layout Matters
+❌ Bad (Array of Structs)
+struct Order {
+  double price;
+  bool paid;
+  char* buyer[5];
+};
+✅ Good (Struct of Arrays)
+vector<double> prices;
+vector<bool> paid;
+
+👉 Only load what you need → better cache usage
+
+🧱 5. Alignment
+Rule:
+Align to cache line (64 bytes)
+Why:
+Avoid touching 2 cache lines
+Prevent slowdown (2–3x)
+Tools:
+posix_memalign(...)
+__attribute__((aligned(64)))
+⚠️ 6. Unaligned Access = BAD
+May require 2 cache line loads
+Slower even if supported
+🧩 7. Struct Optimization
+Rules:
+Put most-used field first
+Access fields in declared order
+Fix padding:
+// reorder fields to remove holes
+
+👉 Fit struct into 1 cache line if possible
+
+🔥 8. Non-Temporal (Streaming) Writes
+Use when:
+Write large data
+Won’t reuse soon
+_mm_stream_si128(...)
+Benefits:
+Avoid cache pollution
+Uses write-combining
+
+🔁 9. Write Combining
+CPU merges small writes → full cache line write
+Works best:
+p[0], p[16], p[32], p[48] // same cache line
+Fails if:
+Writes are scattered
+⚔️ 10. Cache Conflicts (Set Associativity)
+Problem:
+Multiple addresses map to same cache set → eviction
+Happens when:
+Access pattern = power-of-2 stride
+arr[i * 4096]; // 🚨 bad
+Fix:
+Add padding
+Break alignment patterns
+🏦 11. Cache Banks (Advanced)
+L1 can serve 2 loads/cycle IF:
+Different banks OR same index
+
+👉 Keep related data close
+
+📊 12. Matrix Optimization Insight
+❌ Bad:
+mul2[k][j] // column access
+✅ Good:
+Transpose OR block loops
+
+👉 Can get 3–10x speedup
+
+🧠 Mental Model
+CPU loads 64B cache line
+If you use only 8B → waste 56B
+If you jump around → cache useless
+🎯 Interview Lines
+“I optimize for spatial & temporal locality”
+“I use loop tiling to fit L1 cache”
+“I avoid cache pollution with streaming stores”
+“I consider cache associativity to avoid conflicts”
+“I design data layout (AoS vs SoA) based on access patterns”
